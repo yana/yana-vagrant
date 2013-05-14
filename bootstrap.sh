@@ -54,7 +54,7 @@ fi
 mkdir -p /var/lib/tomcat6/webapps/yana2
 cp /vagrant/yana2-0.1.war /var/lib/tomcat6/webapps/yana2
 cd /var/lib/tomcat6/webapps/yana2
-unzip yana2-0.1.war
+unzip -o yana2-0.1.war
 rm  yana2-0.1.war
 
 http_port=8080
@@ -97,14 +97,29 @@ fi
 service iptables stop
 #
 
+
+# Start up yana
+set +e
+# ----------------
 if ! service tomcat6 status
 then
     service tomcat6 start
+    let count=0
+    let max=18
+    while [ $count -le $max ]
+    do
+        if ! grep  "INFO: Server startup in" /var/log/tomcat6/catalina.out
+        then  printf >&2 ".";# progress output.
+        else  break; # successful message.
+        fi
+        let count=$count+1;# increment attempts
+        [ $count -eq $max ] && {
+            echo >&2 "FAIL: Execeeded max attemps "
+            exit 1
+        }
+        sleep 10
+    done
 fi
-
-
-# Start up yana
-# ----------------
 
 
 echo "Yana started."
