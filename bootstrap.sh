@@ -3,6 +3,14 @@
 set -e 
 set -u
 
+if [ $# -ne 2 ]
+then
+    echo >&2 "usage: bootstrap name ip"
+    exit 1
+fi
+HOST_NAME=$1
+HOST_IP=$2
+
 
 # Software install
 # ----------------
@@ -63,7 +71,7 @@ sed -e "s,@http_port@,$http_port,g" \
     /vagrant/server.xml > /etc/tomcat6/server.xml
 
 
-server_url="https://localhost:$https_port/yana"
+server_url="https://$HOST_IP:$https_port/yana2"
 index_dir=/var/lib/yana/search
 yana_db_dir=/var/lib/yana/db
 mkdir -p $index_dir $yana_db_dir
@@ -81,7 +89,7 @@ fi
 
 if ! grep -q yana2.config.location /etc/tomcat6/tomcat6.conf 
 then
-    echo 'CATALINA_OPTS="-Dyana2.config.location=/etc/tomcat/yana/config.groovy -XX:MaxPermSize=256m -Xmx1024m -Xms256m"' >>  /etc/tomcat6/tomcat6.conf 
+    echo 'CATALINA_OPTS="-Dyana2.config.location=/etc/tomcat6/yana/config.groovy -XX:MaxPermSize=256m -Xmx1024m -Xms256m"' >>  /etc/tomcat6/tomcat6.conf 
 fi
 
 #
