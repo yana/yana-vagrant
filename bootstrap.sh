@@ -89,7 +89,10 @@ fi
 
 if ! grep -q yana2.config.location /etc/tomcat6/tomcat6.conf 
 then
-    echo 'CATALINA_OPTS="-Dyana2.config.location=/etc/tomcat6/yana/config.groovy -XX:MaxPermSize=256m -Xmx1024m -Xms256m"' >>  /etc/tomcat6/tomcat6.conf 
+    cat >>  /etc/tomcat6/tomcat6.conf  <<EOF
+CATALINA_OPTS="-Dyana2.config.location=/etc/tomcat6/yana/config.groovy -XX:MaxPermSize=256m -Xmx1024m -Xms256m"
+EOF
+
 fi
 
 #
