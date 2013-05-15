@@ -44,7 +44,6 @@ mkdir -p /var/lib/tomcat6/webapps/yana2
 cd /var/lib/tomcat6/webapps/yana2
 curl -f -s -L $WAR_URL -o ${WAR} -z ${WAR}
 unzip -o ${WAR}
-rm  ${WAR}
 
 # Begin configuration to enable SSL.
 
@@ -65,10 +64,10 @@ then
         -storepass $keystore_pass \
         -keypass $keystore_pass
 fi
-
 # Configure tomcat to use our ports and keystore.
 if [ -f /etc/tomcat6/server.xml ]
 then
+    # Backup existing configuration file.
     cp /etc/tomcat6/server.xml /etc/tomcat6/server.xml.$(date +"%Y-%m-%d-%S")
 fi
 sed -e "s,@http_port@,$http_port,g" \
@@ -77,10 +76,13 @@ sed -e "s,@http_port@,$http_port,g" \
     -e "s,@keystore_pass@,$keystore_pass,g" \
     /vagrant/server.xml > /etc/tomcat6/server.xml
 
-# Configure yana application.
+
+# Configure the yana application base url, index and db dir.
+
 server_url="https://$HOST_IP:$https_port/yana2"
 index_dir=/var/lib/yana/search
 yana_db_dir=/var/lib/yana/db
+
 mkdir -p $index_dir $yana_db_dir
 chown -R tomcat:tomcat /var/lib/yana
 
@@ -94,17 +96,16 @@ then
         /vagrant/config.groovy > /etc/tomcat6/yana/config.groovy
 fi
 
-# Add yana startup flags to Tomcat.
+# Add yana configuration location and java startup flags to Tomcat.
 if ! grep -q yana2.config.location /etc/tomcat6/tomcat6.conf 
 then
     cat >>  /etc/tomcat6/tomcat6.conf  <<EOF
 CATALINA_OPTS="-Dyana2.config.location=/etc/tomcat6/yana/config.groovy -XX:MaxPermSize=256m -Xmx1024m -Xms256m"
 EOF
-
 fi
 
 #
-# Disable the firewall so we can easily access it from the host
+# Disable the firewall so we can easily access it from the host.
 service iptables stop
 #
 
@@ -128,7 +129,7 @@ then
         fi
         let count=$count+1;# increment attempts
         [ $count -eq $max ] && {
-            echo >&2 "FAIL: Execeeded max attemps "
+            echo >&2 "FAIL: Reached max attempts to find success message in log. Exiting."
             exit 1
         }
         sleep 10
