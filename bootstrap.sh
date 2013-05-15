@@ -3,13 +3,14 @@
 set -e 
 set -u
 
-if [ $# -ne 2 ]
+if [ $# -ne 3 ]
 then
-    echo >&2 "usage: bootstrap name ip"
+    echo >&2 "usage: bootstrap verion name ip"
     exit 1
 fi
-HOST_NAME=$1
-HOST_IP=$2
+YANA_VERSION=$1
+HOST_NAME=$2
+HOST_IP=$3
 
 
 # Software install
@@ -51,11 +52,14 @@ then
 fi
 
 # Deploy the Yana war
+WAR=yana2-${YANA_VERSION}.war
+WAR_URL=http://dl.bintray.com/ahonor/yana-war/$WAR
+
 mkdir -p /var/lib/tomcat6/webapps/yana2
-cp /vagrant/yana2-0.1.war /var/lib/tomcat6/webapps/yana2
 cd /var/lib/tomcat6/webapps/yana2
-unzip -o yana2-0.1.war
-rm  yana2-0.1.war
+curl -f -s -L $WAR_URL -o ${WAR} -z ${WAR}
+unzip -o ${WAR}
+rm  ${WAR}
 
 http_port=8080
 https_port=8443
