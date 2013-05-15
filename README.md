@@ -9,7 +9,8 @@ This vagrant configuration defines the following virtual machines:
 
 The yana machine uses minimal centos base box and installs software via yum/rpm.
 
-See the Vagrantfile for further details about changing parameters used
+See the [Vagrantfile](https://github.com/yana/yana-vagrant/blob/master/Vagrantfile)
+for further details about changing parameters used
 by the provisioning scripts.
 
 ## Requirements
@@ -18,8 +19,10 @@ by the provisioning scripts.
 * [Vagrant 1.2.2](http://downloads.vagrantup.com)
 
 The vagrant provisioning scripts automatically 
-download the YANA application from
+download all the needed software via rpm and yum.
+The YANA application is downloaded from
 bintray.com: https://bintray.com/pkg/show/general/ahonor/yana-war/yana
+(updated by future YANA builds).
 
 ## Startup
 
