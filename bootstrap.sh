@@ -16,8 +16,8 @@ HOST_IP=$3
 # Software install
 # ----------------
 #
-# Utilities
-#
+# Utilities.
+# Bootstrap a fedora repo to get xmlstarlet
 if ! rpm -q epel-release
 then
     rpm -Uvh http://dl.fedoraproject.org/pub/epel/6/x86_64/epel-release-6-8.noarch.rpm 
@@ -25,18 +25,33 @@ fi
 yum -y install xmlstarlet unzip
 
 #
-# JRE
+# JRE.
 #
 yum -y install java-1.6.0
 #
-# Tomcat
+# Tomcat.
 #
 yum install -y tomcat6 tomcat6-webapps tomcat6-admin-webapps
 chkconfig tomcat6 on
 
-# Enable SSL
+#
+# Yana.
+#
+WAR=yana2-${YANA_VERSION}.war
+WAR_URL=http://dl.bintray.com/ahonor/yana-war/$WAR
 
-# Generate the keystore
+mkdir -p /var/lib/tomcat6/webapps/yana2
+cd /var/lib/tomcat6/webapps/yana2
+curl -f -s -L $WAR_URL -o ${WAR} -z ${WAR}
+unzip -o ${WAR}
+rm  ${WAR}
+
+# Begin configuration to enable SSL.
+
+http_port=8080
+https_port=8443
+
+# Generate the keystore.
 keystore_file=/etc/tomcat6/yana/keystore
 keystore_pass=password
 if [ ! -f "$keystore_file" ]
@@ -51,19 +66,7 @@ then
         -keypass $keystore_pass
 fi
 
-# Deploy the Yana war
-WAR=yana2-${YANA_VERSION}.war
-WAR_URL=http://dl.bintray.com/ahonor/yana-war/$WAR
-
-mkdir -p /var/lib/tomcat6/webapps/yana2
-cd /var/lib/tomcat6/webapps/yana2
-curl -f -s -L $WAR_URL -o ${WAR} -z ${WAR}
-unzip -o ${WAR}
-rm  ${WAR}
-
-http_port=8080
-https_port=8443
-
+# Configure tomcat to use our ports and keystore.
 if [ -f /etc/tomcat6/server.xml ]
 then
     cp /etc/tomcat6/server.xml /etc/tomcat6/server.xml.$(date +"%Y-%m-%d-%S")
@@ -74,7 +77,7 @@ sed -e "s,@http_port@,$http_port,g" \
     -e "s,@keystore_pass@,$keystore_pass,g" \
     /vagrant/server.xml > /etc/tomcat6/server.xml
 
-
+# Configure yana application.
 server_url="https://$HOST_IP:$https_port/yana2"
 index_dir=/var/lib/yana/search
 yana_db_dir=/var/lib/yana/db
@@ -91,6 +94,7 @@ then
         /vagrant/config.groovy > /etc/tomcat6/yana/config.groovy
 fi
 
+# Add yana startup flags to Tomcat.
 if ! grep -q yana2.config.location /etc/tomcat6/tomcat6.conf 
 then
     cat >>  /etc/tomcat6/tomcat6.conf  <<EOF
@@ -106,8 +110,11 @@ service iptables stop
 
 
 # Start up yana
-set +e
-# ----------------
+# -------------
+set +e; # shouldn't have to turn this off.
+
+# Check if tomcat is running and start it if necessary.
+# Checks if startup message is contained by log file.
 if ! service tomcat6 status
 then
     service tomcat6 start

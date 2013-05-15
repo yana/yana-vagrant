@@ -14,13 +14,15 @@ YANA_URL=$2
 CURLOPTS="-k -f -s -S -L -c cookies -b cookies"
 CURL="curl $CURLOPTS"
   
-# Login
+# Login.
 $CURL --data "j_username=admin&j_password=admin" \
     ${YANA_URL}/j_spring_security_check > curl.out
 
-# List projects and convert it to well formed XML.
+# List projects. There isn't an API for this so
+# get the page content and convert it to well formed XML.
 $CURL ${YANA_URL}/project/list >curl.out
 xmlstarlet fo -R -H curl.out > projects.html 2>/dev/null
+
 # Query the HTML for project references (HTML screenscrape alert!)
 if ! xmlstarlet sel -t \
     -m "//a[contains(@href,'project/select?project=')]" \
@@ -29,16 +31,16 @@ then
     echo >&2 "No projects exist yet."
 fi
 
-# Check if specified project already exists:
+# Check if specified project already exists.
 if ! grep -q "${PROJECT}" projects.txt
 then
-   # Not there so create the project.
+   # Does not exist, so create the project.
     $CURL --data "name=$PROJECT&description=none" \
         ${YANA_URL}/project/save >curl.out
     echo >&2 "Created project $PROJECT."
 fi
 
-# Load some model data.
+# Load some example model data into the project.
 model=/var/lib/tomcat6/webapps/yana2/WEB-INF/classes/import/example.xml
 $CURL --form yanaimport=@$model \
     "${YANA_URL}/import/savexml?project=$PROJECT" > curl.out
@@ -48,7 +50,11 @@ echo >&2 "Imported example model: $model"
 $CURL ${YANA_URL}/api/node/list/xml?project=$PROJECT > nodes.xml
 xmlstarlet val nodes.xml >/dev/null
 echo >&2 "Listing nodes in $PROJECT"
+
 # Print information about the nodes from the model.
+#
+#        name[type] description
+#
 xmlstarlet sel -t -m "/yana/nodes/node" \
     -v @name -o "[" -v @type -o "] " -v description -n nodes.xml
 
@@ -56,38 +62,41 @@ xmlstarlet sel -t -m "/yana/nodes/node" \
 # Create a new node of type, Service. 
 #
 echo >&2 "Creating a node ..."
-# List all the types
+
+# The API requires the nodetype ID but we only know its name.
+# So get a list of all the types and we'll search for it by name.
 $CURL --request POST --header "Content-Type: application/json" \
     ${YANA_URL}/api/nodeType/list/xml?project=${PROJECT} > curl.out
 xmlstarlet val curl.out >/dev/null
 
-# Query the result for a type named 'Service' and print its id.
+# Query the list for a type named 'Service' and print its id.
 nodetype=$(xmlstarlet sel -t -m "//type[@name='Service']" -v @id curl.out)
 if [ -z "$nodetype" ]
 then
-    echo >&2 "Expected type missing from project model: Service"
+    echo >&2 "Type missing from project model: Service"
     exit 1
 fi
 
-# Create the node
+# Create the node.
 $CURL --request POST --header "Content-Type: application/json" \
     -d "{name:'myservice',description:'this is a service',nodetype:{id:${nodetype}},tags:'tagA,tagB',basedir:'/tmp',port:'80'}" \
     ${YANA_URL}/api/node/xml?project=${PROJECT} > curl.out
 xmlstarlet val curl.out
 
+# The API output contains a model of the new node. Print its id.
 id=$(xmlstarlet sel -t -m "//node" -v @id curl.out)
 echo >&2 "Created node id: $id"
 
-# Edit the node. 
+# Edit the node.  Change some of its values.
 $CURL --request PUT --header "Content-Type: application/json" \
     -d "{id:$id,name:'myservice',description:'this is a description',nodetype:{id:${nodetype}},tags:'tagB,tagC',basedir:'/var/tmp',port:'8080'}" \
     $YANA_URL/api/node/xml?project=$PROJECT > curl.out
 xmlstarlet val curl.out
 
-# Delete the node
+# Delete the node.
 $CURL --request DELETE $YANA_URL/api/node/xml/$id?project=$PROJECT
 
-# Export the model 
+# Export the model. 
 echo >& "Exporting the model."
 $CURL $YANA_URL/export/xml?project=${PROJECT} > curl.out
 xmlstarlet val curl.out
