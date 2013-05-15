@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 
+# Exit immediately on error or undefined variable.
 set -e 
 set -u
 
+# Process command line arguments.
 if [ $# -ne 3 ]
 then
     echo >&2 "usage: bootstrap verion name ip"
@@ -13,8 +15,9 @@ HOST_NAME=$2
 HOST_IP=$3
 
 
-# Software install
+# Install software
 # ----------------
+
 #
 # Utilities.
 # Bootstrap a fedora repo to get xmlstarlet
@@ -45,6 +48,10 @@ cd /var/lib/tomcat6/webapps/yana2
 curl -f -s -L $WAR_URL -o ${WAR} -z ${WAR}
 unzip -o ${WAR}
 
+#
+# Configure software.
+# -------------------
+
 # Begin configuration to enable SSL.
 
 http_port=8080
@@ -65,9 +72,10 @@ then
         -keypass $keystore_pass
 fi
 # Configure tomcat to use our ports and keystore.
+# Copy existing configuration to a backup file.
 if [ -f /etc/tomcat6/server.xml ]
 then
-    # Backup existing configuration file.
+
     cp /etc/tomcat6/server.xml /etc/tomcat6/server.xml.$(date +"%Y-%m-%d-%S")
 fi
 sed -e "s,@http_port@,$http_port,g" \
@@ -105,38 +113,44 @@ EOF
 fi
 
 #
-# Disable the firewall so we can easily access it from the host.
+# Disable the firewall so we can easily access it from any host.
 service iptables stop
 #
 
 
-# Start up yana
+# Start yana.
 # -------------
-set +e; # shouldn't have to turn this off.
+
+set +e; # shouldn't have to turn off errexit.
 
 # Check if tomcat is running and start it if necessary.
 # Checks if startup message is contained by log file.
+# Fails and exits non-zero if reaches max tries.
 if ! service tomcat6 status
 then
-    service tomcat6 start
+
+    success_msg="INFO: Server startup in"
     let count=0
     let max=18
+
+    service tomcat6 start
     while [ $count -le $max ]
     do
-        if ! grep  "INFO: Server startup in" /var/log/tomcat6/catalina.out
-        then  printf >&2 ".";# progress output.
-        else  break; # successful message.
+        if ! grep "${success_msg}" /var/log/tomcat6/catalina.out
+        then  printf >&2 ".";#  output message.
+        else  break; # found successful startup message.
         fi
         let count=$count+1;# increment attempts
         [ $count -eq $max ] && {
             echo >&2 "FAIL: Reached max attempts to find success message in log. Exiting."
             exit 1
         }
-        sleep 10
+        sleep 10; # wait 10s before trying again.
     done
 fi
 
 
 echo "Yana started."
 
+# Done.
 exit $?
