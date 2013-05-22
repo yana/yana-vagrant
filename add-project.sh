@@ -97,7 +97,7 @@ xmlstarlet sel -t -m "/yana/nodes/node" \
 
 query="nodetype:Service"; # The colon char will be encoded as %3A in the url.
 
-echo >&2 "Searching $nodetype nodes in $PROJECT"
+echo >&2 "Searching for nodes in $PROJECT matching $query"
 $CURL -X GET "${YANA_URL}/search/index?format=xml&project=${PROJECT}&q=${query/:/%3A}" > curl.out
 xmlstarlet val curl.out
 xmlstarlet sel -t -m "//node[@type='Service']" -v @name -o ":" -v @tags -n curl.out
