@@ -91,6 +91,15 @@ xmlstarlet val nodes.xml >/dev/null
 xmlstarlet sel -t -m "/yana/nodes/node" \
     -v @name -o "[" -v @type -o "] " -v description -n nodes.xml
 
+#
+# Search nodes.
+# -------------
+
+echo >&2 "Searching nodes in $PROJECT"
+
+$CURL -X GET "${YANA_URL}/search/index?format=xml&project=${PROJECT}&q=nodetype%3AService" > curl.out
+xmlstarlet val curl.out
+xmlstarlet sel -t -m "//node[@type='Service']" -v @name -o ":" -v @tags -n curl.out
 
 #
 # Create node.
